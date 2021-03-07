@@ -1,76 +1,33 @@
+from token_csmall import tokens
+from tabulate import tabulate
 import argparse
 import re
 
-# Keywords
-keywords = ['main','int','float', 'if','else', 'while', 'for', 'read', 'print']
-
-# Regular Expression for Identifiers and Keywords
-re_words = '^[a-zA-Z0-9_]*$'
-re_alpha = '/^[A-Za-z]+$/'
-# Regular Expression for Literals
-re_int = '^[0-9]+$'
-
-tokens = {
-  "main":   "MAIN",
-  "int":    "INT",
-  "float":  "FLOAT",
-  "if":     "IF",
-  "else":   "ELSE",
-  "while":  "WHILE",
-  "for":    "FOR",
-  "read":   "READ",
-  "print":  "PRINT",
-  "(":      "LBRACKET",
-  ")":      "RBRACKET",
-  "{":      "LBRACE",
-  "}":      "RBRACE",
-  ",":      "COMMA",
-  ";":      "PCOMMA",
-  "=":      "ATTR",
-  "==":     "EQ",
-  "!=":     "NE",
-  "||":     "OR",
-  "&&":     "AND",
-  "<":      "LT",
-  "<=":     "LE",
-  ">":      "GT",
-  ">=":     "GE",
-  "+":      "PLUS",
-  "-":      "MINUS",
-  "*":      "MULT",
-  "/":      "DIV",
-  "[":      "LCOL",
-  "]":      "RCOL"
-  
-}
-
+# Argumentos da linha de comandos: -i [arquivo de entrada .c] -o [arquivo de saida contendo os tokens]
 parser = argparse.ArgumentParser()
-
-#-db DATABSE -u USERNAME -p PASSWORD -size 20
-parser.add_argument("-i", "--input", help="insert the path and name of a .c file", default="input/teste_attr1.c")
-parser.add_argument("-o", "--output", help="insert the name of output file", default="output/output.txt")
-
+parser.add_argument("-i", "--input", help="insert the path and name of a .c file (DEFAULT: 'input/teste_attr1.c')", default="input/teste_attr1.c")
+parser.add_argument("-o", "--output", help="insert the path and name of output file (DEFAULT: 'output/output.txt')", default="output/output.txt")
 args = parser.parse_args()
 
-f = open(args.input, "r")
+f_in = open(args.input, "r") # Le arquivo de entrada
 
-# file_content = file_content.replace('\n', '')
-# list_elements = re.split('([^a-zA-Z0-9._>=<=!=&&||])', file_content)
-# list_elements = [c.strip(' ') for c in list_elements]
-# list_elements = list(filter(None, list_elements))
+token_list = [] # Lista de tokens identificados 
+buffer = [] # Buffer que forma o lexema
+state = 0 # Estado inicial do automato
+line_count = 1 
 
-buffer = []
-state = 0
-
-for line in f:
+for line in f_in: # Percorre todas as linhas do arquivo de entrada
   line = line.rstrip('\n')
-  for char in line:
-  
+  char_count = 0
+
+  while (char_count < len(line)): # Percorre todos os caracteres da linha
+    char = line[char_count]
+
     if state == 0:
-      if re.match('^[a-zA-Z]*$', char):
+      if char.isalpha():
         state = 1
         buffer.append(char)
-      elif re.match('^[0-9]+$', char):
+      elif char.isnumeric():
         state = 2
         buffer.append(char)
       elif char == '<':
@@ -91,140 +48,136 @@ for line in f:
       elif char == '&':
         state = 10
         buffer.append(char)
+      elif char == ' ':
+        pass
       else:
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
-
-
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 1:
       if re.match('^[a-zA-Z0-9_]*$', char):
         buffer.append(char)
       else:
+        char_count -= 1
         state = 0
         lexeme = ''.join(buffer)
-        idToken = 'ID'
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme] if lexeme in tokens else idToken}')
-        buffer = []
+        token_list.append([tokens[lexeme] if lexeme in tokens else "ID", lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 2:
-      if re.match('^[0-9]+$', char):
+      if char.isnumeric():
         buffer.append(char)
       elif char == '.':
         state = 3
         buffer.append(char)
       else:
+        char_count -= 1
         state = 0
-        print(f'INTEGER: {buffer}')
-        buffer = []
+        lexeme = ''.join(buffer)
+        token_list.append(['INTEGER_CONST', lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
         
     elif state == 3:
-      if re.match('^[0-9]+$', char):
+      if char.isnumeric():
         state = 4
         buffer.append(char)
       else:
-        print('error')
+        print(f'Falha no estado {state}: produção não aceita pelo analisador léxico da linguagem Csmall.')
 
     elif state == 4:
-      if re.match('^[0-9]+$', char):
+      if char.isnumeric():
         buffer.append(char)
       else:
+        char_count -= 1
         state = 0
-        print(f'FLOAT: {buffer}')
-        buffer = []
+        lexeme = ''.join(buffer)
+        token_list.append(['FLOAT_CONST', lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 5:
       if (char == '='):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
+        char_count -= 1
         state = 0
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 6:
       if (char == '='):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
+        char_count -= 1
         state = 0
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 7:
       if (char == '='):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
+        char_count -= 1
         state = 0
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
 
     elif state == 8:
       if (char == '='):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
-        print('Error')
+        print(f'Falha no estado {state}: produção não aceita pelo analisador léxico da linguagem Csmall.')
 
     elif state == 9:
       if (char == '|'):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
-        print('Error')
+        print(f'Falha no estado {state}: produção não aceita pelo analisador léxico da linguagem Csmall.')
 
     elif state == 10:
       if (char == '&'):
         state = 0
         buffer.append(char)
         lexeme = ''.join(buffer)
-        print(f'Lexema: "{lexeme}" Token: {tokens[lexeme]}')
-        buffer = []
+        token_list.append([tokens[lexeme], lexeme, line_count]) # Adiciona o token à lista de tokens identificados
+        buffer = [] # Limpa o buffer
       else:
-        print('Error')
+        print(f'Falha no estado {state}: produção não aceita pelo analisador léxico da linguagem Csmall.')
+    
+    char_count += 1
+  line_count += 1
 
+# Ultimo token refere ao fim do arquivo -> EOF
+token_list.append(['EOF', '', line_count])
 
-# file_content = f.read()
+# Escreve no arquivo de saida os tokens identificados na produção
+f_out = open(args.output, "w")
+f_out.write(tabulate(token_list, headers=['Token', 'Lexema', 'Linha']))
+f_out.close()
 
-# print(file_content)
-# print(list_elements)
-
-# for element in list_elements:
-
-#   if element[0].isalpha(): 
-#     if (re.fullmatch(re_words, element)):
-#       if any(keyword == element for keyword in keywords):
-#         print(f'PALAVRA: {element} TOKEN: {element.upper()}') 
-#       else:
-#         print(f'PALAVRA: {element} TOKEN: ID')
-
-#   elif element[0].isnumeric():
-#     if (re.fullmatch(re_float, element)):
-#         print(f'PALAVRA: {element} TOKEN: FLOAT_CONSTANT') 
-#     elif (re.fullmatch(re_int, element)):
-#         print(f'PALAVRA: {element} TOKEN: INTEGER_CONSTANT') 
-#     else:
-#         print(f'PALAVRA: {element} TOKEN: ERROR') 
-
+f_in.close()
 
