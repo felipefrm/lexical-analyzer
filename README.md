@@ -1,7 +1,7 @@
 # Lexical Analyzer for CSmall Language
 
 ### 1. Csmall
-Small-C is a subset of the C programming language, with a reduced amount of tokens.
+Csmall is a subset of the C programming language, with a reduced amount of tokens.
 
 ### 1. How To Run
 ```sh
