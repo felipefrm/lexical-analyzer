@@ -11,7 +11,7 @@ Small-C is a subset of the C programming language, with a reduced amount of toke
   # Go into the repository
   cd lexical-analyzer
 
-  # install a single dependency
+  # install dependency
   $ pip install tabulate
 
   # run the app
